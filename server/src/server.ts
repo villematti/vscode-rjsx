@@ -11,6 +11,7 @@ import {
 	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem,
 	CompletionItemKind
 } from 'vscode-languageserver';
+import { WorkspaceFoldersFeature } from 'vscode-languageserver/lib/workspaceFolders.proposed';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -39,18 +40,23 @@ connection.onInitialize((_params): InitializeResult => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent((change) => {
-	validateTextDocument(change.document);
-});
+// documents.onDidChangeContent((change) => {
+// 		validateTextDocument(change.document);
+// });
+
+
+connection.onDidSaveTextDocument((documentToValidate) => {
+	validateTextDocument(documents.get(documentToValidate.textDocument.uri));
+})
 
 // The settings interface describe the server relevant settings part
 interface Settings {
-	lspSample: ExampleSettings;
+	rjsxLanguageServer: RJSXSettings;
 }
 
 // These are the example settings we defined in the client's package.json
 // file
-interface ExampleSettings {
+interface RJSXSettings {
 	maxNumberOfProblems: number;
 }
 
@@ -60,40 +66,44 @@ let maxNumberOfProblems: number;
 // as well.
 connection.onDidChangeConfiguration((change) => {
 	let settings = <Settings>change.settings;
-	maxNumberOfProblems = settings.lspSample.maxNumberOfProblems || 100;
+	maxNumberOfProblems = settings.rjsxLanguageServer.maxNumberOfProblems || 100;
 	// Revalidate any open text documents
 	documents.all().forEach(validateTextDocument);
 });
 
 function validateTextDocument(textDocument: TextDocument): void {
 	let diagnostics: Diagnostic[] = [];
+
 	let lines = textDocument.getText().split(/\r?\n/g);
 	let problems = 0;
-	for (var i = 0; i < lines.length && problems < maxNumberOfProblems; i++) {
-		let line = lines[i];
-		let index = line.indexOf('typescript');
-		if (index >= 0) {
-			problems++;
-			diagnostics.push({
-				severity: DiagnosticSeverity.Warning,
-				range: {
-					start: { line: i, character: index },
-					end: { line: i, character: index + 10 }
-				},
-				message: `${line.substr(index, 10)} should be spelled TypeScript`,
-				source: 'exaaa'
-			});
-		}
-	}
 
-	request.post({url:'http://localhost:8080/skillsmodule/api/skills/vscodetest', body: textDocument.getText()}, function optionalCallback(err: any, httpResponse: any, body: any) {
-			console.log("Body is: ", body);
-			console.log("Document: ", textDocument.getText());
-		}
-	)
+	request.post({url:'http://localhost:8080/api/rjsxlanguageserver/onchange',
+		body: JSON.stringify({content: textDocument.getText(), uri: textDocument.uri})}, 
+		function optionalCallback(err: any, httpResponse: any, body: any) {
+			if(err) return httpResponse;
+			
+			let messages = JSON.parse(body).errors;
+			for (var i = 0; i < messages.length && problems < maxNumberOfProblems; i++) {
+				problems++;
+				
+				if(messages[i].length == 0) {
+					messages[i].length = lines[i].length - messages[i].character;
+				}
 
-	// Send the computed diagnostics to VSCode.
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+				diagnostics.push({
+					severity: DiagnosticSeverity.Error,
+					range: {
+						start: { line: messages[i].line, character: messages[i].character},
+						end: { line: messages[i].line, character: messages[i].character + messages[i].length }
+					},
+					message: messages[i].message,
+					source: 'rjsx'
+				});
+			}
+
+			// Send the computed diagnostics to VSCode.
+			connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+	})
 }
 
 connection.onDidChangeWatchedFiles((_change) => {
@@ -125,7 +135,7 @@ connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): Com
 // This handler resolve additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	console.log("Item here: ", item);
+	connection.console.log(`Item here: ${item.data}`);
 	if (item.data === 1) {
 		item.detail = 'TypeScript details',
 			item.documentation = 'TypeScript documentation'
@@ -144,12 +154,14 @@ connection.onDidOpenTextDocument((params) => {
 	connection.console.log(`${params.textDocument.uri} opened.`);
 });
 
+
 connection.onDidChangeTextDocument((params) => {
 	// The content of a text document did change in VSCode.
 	// params.uri uniquely identifies the document.
 	// params.contentChanges describe the content changes to the document.
 	connection.console.log(`${params.textDocument.uri} changed: ${JSON.stringify(params.contentChanges)}`);
 });
+
 connection.onDidCloseTextDocument((params) => {
 	// A text document got closed in VSCode.
 	// params.uri uniquely identifies the document.
