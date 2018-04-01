@@ -9,9 +9,8 @@ import * as request  from 'request';
 import {
 	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument,
 	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem,
-	CompletionItemKind
+	CompletionItemKind, Hover
 } from 'vscode-languageserver';
-import { WorkspaceFoldersFeature } from 'vscode-languageserver/lib/workspaceFolders.proposed';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -23,11 +22,14 @@ let documents: TextDocuments = new TextDocuments();
 // for open, change and close text document events
 documents.listen(connection);
 
+let serverCompleteItems: CompletionItem[] = [];
+
 // After the server has started the client sends an initialize request. The server receives
 // in the passed params the rootPath of the workspace plus the client capabilities.
 connection.onInitialize((_params): InitializeResult => {
 	return {
 		capabilities: {
+			hoverProvider: true,
 			// Tell the client that the server works in FULL text document sync mode
 			textDocumentSync: documents.syncKind,
 			// Tell the client that the server support code complete
@@ -37,6 +39,24 @@ connection.onInitialize((_params): InitializeResult => {
 		}
 	}
 });
+
+connection.onDidOpenTextDocument((_documentThing) => {
+	console.log("Here we are! First...");
+	request.post({url:'http://localhost:8080/api/rjsxlanguageserver/oncomplete',
+		body: JSON.stringify(_documentThing)}, 
+		function fileOpenCallback(err: any, httpResponse: any, body: any) {
+			if(err) console.log("The error: ", err);
+
+			try {
+				serverCompleteItems = JSON.parse(body);
+			} catch (e) {
+				return {};
+			}
+			console.log("Here we are!");
+			return true;
+		}
+	)
+})
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
@@ -90,8 +110,25 @@ function validateTextDocument(textDocument: TextDocument): void {
 					messages[i].length = lines[i].length - messages[i].character;
 				}
 
+				let messageType: DiagnosticSeverity = DiagnosticSeverity.Error;
+
+				switch(messages[i].type) {
+					case "warning":
+					messageType = DiagnosticSeverity.Warning;
+					break;
+					case "error":
+					messageType = DiagnosticSeverity.Error;
+					break;
+					case "information":
+					messageType = DiagnosticSeverity.Information;
+					break;
+					case "hint":
+					messageType = DiagnosticSeverity.Hint;
+					break;
+				}
+
 				diagnostics.push({
-					severity: DiagnosticSeverity.Error,
+					severity: messageType,
 					range: {
 						start: { line: messages[i].line, character: messages[i].character},
 						end: { line: messages[i].line, character: messages[i].character + messages[i].length }
@@ -111,38 +148,65 @@ connection.onDidChangeWatchedFiles((_change) => {
 	connection.console.log('We received an file change event');
 });
 
+connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover => {
+	let hoveringObject = {
+		content: documents.get(_textDocumentPosition.textDocument.uri).getText(),
+		uri: _textDocumentPosition.textDocument.uri,
+		line: _textDocumentPosition.position.line,
+		character: _textDocumentPosition.position.character
+	}
+
+	let hover = {
+		contents: ""
+	}
+
+	return hover;
+})
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-
+	console.log("Raw: ", _textDocumentPosition);
+	console.log("Position char: ", _textDocumentPosition.position.character);
+	console.log("Position line: ", _textDocumentPosition.position.line);
+	console.log("Content: ", documents.get(_textDocumentPosition.textDocument.uri).getText());
 	// The pass parameter contains the position of the text document in
 	// which code complete got requested. For the example we ignore this
 	// info and always provide the same completion items.
-	return [
-		{
-			label: 'TypeScript',
-			kind: CompletionItemKind.Text,
-			data: 1
-		},
-		{
-			label: 'JavaScript',
-			kind: CompletionItemKind.Text,
-			data: 2
-		}
-	]
+	// return [
+	// 	{
+	// 		label: 'TypeScript',
+	// 		kind: CompletionItemKind.Text,
+	// 		data: 1
+	// 	},
+	// 	{
+	// 		label: 'JavaScript',
+	// 		kind: CompletionItemKind.Text,
+	// 		data: 2
+	// 	},
+	// 	{
+	// 		label: 'Joku arvo',
+	// 		kind: CompletionItemKind.Class,
+	// 		data: 3
+	// 	}
+	// ]
+	return serverCompleteItems;
 });
 
 // This handler resolve additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	connection.console.log(`Item here: ${item.data}`);
-	if (item.data === 1) {
-		item.detail = 'TypeScript details',
-			item.documentation = 'TypeScript documentation'
-	} else if (item.data === 2) {
-		item.detail = 'JavaScript details',
-			item.documentation = 'JavaScript documentation'
-	}
+	
+	// console.log(item);
+	// if (item.data === 1) {
+	// 	item.detail = 'TypeScript details',
+	// 		item.documentation = 'TypeScript documentation'
+	// } else if (item.data === 2) {
+	// 	item.detail = 'JavaScript details',
+	// 		item.documentation = 'JavaScript documentation'
+	// } else if (item.data === 3) {
+	// 	item.detail = "Joku muu arvo"
+	// 	item.documentation == "Tällanen dokumentaatio"
+	// }
 	return item;
 });
 

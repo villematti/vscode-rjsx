@@ -48,9 +48,17 @@
                 "id": "rjsx",
                 "extensions": [
                     "rjsx"
-                ]
+				],
+				"configuration": "./language-configuration.json"
             }
-        ]
+		],
+		"grammars": [
+			{
+				"language": "rjsx",
+				"scopeName": "text.rjsx",
+				"path": "./syntaxes/rjsx.tmLanguage"
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "tsc -p ./",
