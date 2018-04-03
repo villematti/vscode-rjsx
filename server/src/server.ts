@@ -23,13 +23,15 @@ let documents: TextDocuments = new TextDocuments();
 documents.listen(connection);
 
 let serverCompleteItems: CompletionItem[] = [];
+let onCompleteApi = "http://localhost:8080/skillsmodule/api/rjsxlanguageserver/getallcompleteitems/?uris=";
+let errorCheckApi = "http://localhost:8080/roboceo/api/rjsxlanguageserver/geterrors/?uri=";
 
 // After the server has started the client sends an initialize request. The server receives
 // in the passed params the rootPath of the workspace plus the client capabilities.
 connection.onInitialize((_params): InitializeResult => {
 	return {
 		capabilities: {
-			hoverProvider: true,
+			// hoverProvider: true,
 			// Tell the client that the server works in FULL text document sync mode
 			textDocumentSync: documents.syncKind,
 			// Tell the client that the server support code complete
@@ -41,9 +43,20 @@ connection.onInitialize((_params): InitializeResult => {
 });
 
 connection.onDidOpenTextDocument((_documentThing) => {
-	console.log("Here we are! First...");
-	request.post({url:'http://localhost:8080/api/rjsxlanguageserver/oncomplete',
-		body: JSON.stringify(_documentThing)}, 
+	onCompleteApiCall(_documentThing.textDocument.uri);
+})
+
+function onCompleteApiCall(_documentUri: string) {
+	let fileArray = _documentUri.split("/");
+	let moduleName = fileArray[fileArray.indexOf("js") - 1];
+
+	let urlToParse = "";
+
+	if(fileArray.indexOf("frontendcommons") === -1) {
+		urlToParse += moduleName + "/js";
+	}
+
+	request.get({url: onCompleteApi + "../frontendcommons/js;../" + urlToParse}, 
 		function fileOpenCallback(err: any, httpResponse: any, body: any) {
 			if(err) console.log("The error: ", err);
 
@@ -52,11 +65,10 @@ connection.onDidOpenTextDocument((_documentThing) => {
 			} catch (e) {
 				return {};
 			}
-			console.log("Here we are!");
 			return true;
 		}
 	)
-})
+}
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
@@ -66,53 +78,34 @@ connection.onDidOpenTextDocument((_documentThing) => {
 
 
 connection.onDidSaveTextDocument((documentToValidate) => {
-	validateTextDocument(documents.get(documentToValidate.textDocument.uri));
+	// validateTextDocument(documentToValidate: TextDocument);
+	onCompleteApiCall(documentToValidate.textDocument.uri);
+	rjsxValidate(documentToValidate.textDocument.uri);
 })
 
-// The settings interface describe the server relevant settings part
-interface Settings {
-	rjsxLanguageServer: RJSXSettings;
-}
-
-// These are the example settings we defined in the client's package.json
-// file
-interface RJSXSettings {
-	maxNumberOfProblems: number;
-}
-
-// hold the maxNumberOfProblems setting
-let maxNumberOfProblems: number;
-// The settings have changed. Is send on server activation
-// as well.
-connection.onDidChangeConfiguration((change) => {
-	let settings = <Settings>change.settings;
-	maxNumberOfProblems = settings.rjsxLanguageServer.maxNumberOfProblems || 100;
-	// Revalidate any open text documents
-	documents.all().forEach(validateTextDocument);
-});
-
-function validateTextDocument(textDocument: TextDocument): void {
+function rjsxValidate(fileUri: string) {
 	let diagnostics: Diagnostic[] = [];
+	let fileArray = fileUri.split("/");
 
-	let lines = textDocument.getText().split(/\r?\n/g);
-	let problems = 0;
+	let moduleName = fileArray[fileArray.indexOf("js") - 1];
 
-	request.post({url:'http://localhost:8080/api/rjsxlanguageserver/onchange',
-		body: JSON.stringify({content: textDocument.getText(), uri: textDocument.uri})}, 
+	let urlToParse = "";
+
+	if(fileArray.indexOf("frontendcommons") === -1) {
+		urlToParse += "../" + moduleName + "/js/" + fileArray[fileArray.length - 1];
+	} else {
+		let componentUri = fileUri.split("frontendcommons");
+		urlToParse += "../frontendcommons/" + componentUri[1];
+	}
+
+	request.get({url:errorCheckApi + urlToParse}, 
 		function optionalCallback(err: any, httpResponse: any, body: any) {
 			if(err) return httpResponse;
 			
 			let messages = JSON.parse(body).errors;
-			for (var i = 0; i < messages.length && problems < maxNumberOfProblems; i++) {
-				problems++;
-				
-				if(messages[i].length == 0) {
-					messages[i].length = lines[i].length - messages[i].character;
-				}
-
-				let messageType: DiagnosticSeverity = DiagnosticSeverity.Error;
-
-				switch(messages[i].type) {
+			messages.map((mes: any, i: number) => {
+				let messageType: DiagnosticSeverity;
+				switch(mes.type) {
 					case "warning":
 					messageType = DiagnosticSeverity.Warning;
 					break;
@@ -130,18 +123,33 @@ function validateTextDocument(textDocument: TextDocument): void {
 				diagnostics.push({
 					severity: messageType,
 					range: {
-						start: { line: messages[i].line, character: messages[i].character},
-						end: { line: messages[i].line, character: messages[i].character + messages[i].length }
+						start: { line: mes.line, character: 0}, //line: messages[i].line, character: messages[i].character},
+						end: { line: mes.line, character: 0},// line: messages[i].line, character: messages[i].character + messages[i].length }
 					},
-					message: messages[i].message,
+					message: mes.message, // messages[i].message,
 					source: 'rjsx'
 				});
-			}
+
+			})
 
 			// Send the computed diagnostics to VSCode.
-			connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+			connection.sendDiagnostics({ uri: fileUri, diagnostics });
 	})
 }
+
+// The settings interface describe the server relevant settings part
+interface Settings {
+	rjsxLanguageServer: RJSXSettings;
+}
+
+// These are the example settings we defined in the client's package.json
+// file
+interface RJSXSettings {
+	maxNumberOfProblems: number;
+}
+
+// hold the maxNumberOfProblems setting
+let maxNumberOfProblems: number;
 
 connection.onDidChangeWatchedFiles((_change) => {
 	// Monitored files have change in VSCode
@@ -165,10 +173,6 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover =>
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-	console.log("Raw: ", _textDocumentPosition);
-	console.log("Position char: ", _textDocumentPosition.position.character);
-	console.log("Position line: ", _textDocumentPosition.position.line);
-	console.log("Content: ", documents.get(_textDocumentPosition.textDocument.uri).getText());
 	// The pass parameter contains the position of the text document in
 	// which code complete got requested. For the example we ignore this
 	// info and always provide the same completion items.
