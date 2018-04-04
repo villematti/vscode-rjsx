@@ -1,6 +1,11 @@
 # README
-## This is the README for the "languageprovider-sample" 
+## This is the README for the "vscode-rjsx" extension 
 -------------------
+
+#Before you are able to use this
+* run gradle customBuild in rjsxlanguageserver folder
+* make sure myinternet server is running
+* make sure you choose rjsx as a language inside VS Code
 
 This folder contains a sample VS code extension that demonstrates an extension that runs a language server
 

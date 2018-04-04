@@ -7,9 +7,8 @@
 import * as request  from 'request';
 
 import {
-	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument,
-	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem,
-	CompletionItemKind, Hover
+	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments,
+	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem, Hover
 } from 'vscode-languageserver';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
