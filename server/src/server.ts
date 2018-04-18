@@ -7,9 +7,10 @@
 import * as request  from 'request';
 
 import {
-	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments,
+	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument,
 	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem, Hover
 } from 'vscode-languageserver';
+import { RequestHandler } from '_debugger';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -35,27 +36,37 @@ connection.onInitialize((_params): InitializeResult => {
 			textDocumentSync: documents.syncKind,
 			// Tell the client that the server support code complete
 			completionProvider: {
-				resolveProvider: true
-			}
+				resolveProvider: true,
+				triggerCharacters: ['.']
+			},
+			documentFormattingProvider: true
 		}
 	}
 });
 
-connection.onDidOpenTextDocument((_documentThing) => {
-	onCompleteApiCall(_documentThing.textDocument.uri);
+connection.onDidChangeConfiguration(() => {
+	documents.all().forEach(onCompleteApiCall);
+	documents.all().forEach(rjsxValidate);
 })
 
-function onCompleteApiCall(_documentUri: string) {
+documents.onDidChangeContent((change) => {
+	rjsxValidate(change.document);
+	onCompleteApiCall(change.document);
+})
+
+function onCompleteApiCall(_someDocument: TextDocument) {
+	let _documentUri = _someDocument.uri;
+	
 	let fileArray = _documentUri.split("/");
 	let moduleName = fileArray[fileArray.indexOf("js") - 1];
 
 	let urlToParse = "";
 
 	if(fileArray.indexOf("frontendcommons") === -1) {
-		urlToParse += moduleName + "/js";
+		urlToParse += ";../" + moduleName + "/js";
 	}
 
-	request.get({url: onCompleteApi + "../frontendcommons/js;../" + urlToParse}, 
+	request.get({url: onCompleteApi + "../frontendcommons/js" + urlToParse}, 
 		function fileOpenCallback(err: any, httpResponse: any, body: any) {
 			if(err) console.log("The error: ", err);
 
@@ -69,20 +80,13 @@ function onCompleteApiCall(_documentUri: string) {
 	)
 }
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-// documents.onDidChangeContent((change) => {
-// 		validateTextDocument(change.document);
-// });
-
-
 connection.onDidSaveTextDocument((documentToValidate) => {
 	// validateTextDocument(documentToValidate: TextDocument);
-	onCompleteApiCall(documentToValidate.textDocument.uri);
-	rjsxValidate(documentToValidate.textDocument.uri);
+	// onCompleteApiCall(documents.get(documentToValidate.textDocument.uri));
 })
 
-function rjsxValidate(fileUri: string) {
+function rjsxValidate(_textDocument: TextDocument): void {
+	let fileUri = _textDocument.uri;
 	let diagnostics: Diagnostic[] = [];
 	let fileArray = fileUri.split("/");
 
@@ -97,6 +101,9 @@ function rjsxValidate(fileUri: string) {
 		urlToParse += "../frontendcommons/" + componentUri[1];
 	}
 
+	// console.log("Parsed thing: ", urlToParse);
+
+	// Create call to validation service through API
 	request.get({url:errorCheckApi + urlToParse}, 
 		function optionalCallback(err: any, httpResponse: any, body: any) {
 			if(err) return httpResponse;
@@ -155,7 +162,7 @@ connection.onDidChangeWatchedFiles((_change) => {
 	connection.console.log('We received an file change event');
 });
 
-connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover => {
+connection.onHover((_textDocumentPosition: TextDocumentPositionParams, _onCancel): Hover => {
 	let hoveringObject = {
 		content: documents.get(_textDocumentPosition.textDocument.uri).getText(),
 		uri: _textDocumentPosition.textDocument.uri,
@@ -164,7 +171,7 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover =>
 	}
 
 	let hover = {
-		contents: ""
+		contents: "#Testing\n##Kuinka tämä toimii?\n"
 	}
 
 	return hover;
@@ -172,44 +179,34 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover =>
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-	// The pass parameter contains the position of the text document in
-	// which code complete got requested. For the example we ignore this
-	// info and always provide the same completion items.
-	// return [
-	// 	{
-	// 		label: 'TypeScript',
-	// 		kind: CompletionItemKind.Text,
-	// 		data: 1
-	// 	},
-	// 	{
-	// 		label: 'JavaScript',
-	// 		kind: CompletionItemKind.Text,
-	// 		data: 2
-	// 	},
-	// 	{
-	// 		label: 'Joku arvo',
-	// 		kind: CompletionItemKind.Class,
-	// 		data: 3
-	// 	}
-	// ]
-	return serverCompleteItems;
+	
+	let currentContent = documents.get(_textDocumentPosition.textDocument.uri).getText();
+	let lines = currentContent.split("\n");
+	let char = lines[_textDocumentPosition.position.line].split("");
+	let modulesInQuestion: CompletionItem[];
+
+	if(char[_textDocumentPosition.position.character - 1] === ".") {
+		modulesInQuestion = [];
+		let latest = char.join("");
+		serverCompleteItems.map((item) => {
+			if(item.label.indexOf(latest) !== -1) {
+				modulesInQuestion.push(item);
+			}
+		})
+	} else {
+		modulesInQuestion = serverCompleteItems;
+	}
+	
+	return modulesInQuestion;
 });
 
 // This handler resolve additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	
-	// console.log(item);
-	// if (item.data === 1) {
-	// 	item.detail = 'TypeScript details',
-	// 		item.documentation = 'TypeScript documentation'
-	// } else if (item.data === 2) {
-	// 	item.detail = 'JavaScript details',
-	// 		item.documentation = 'JavaScript documentation'
-	// } else if (item.data === 3) {
-	// 	item.detail = "Joku muu arvo"
-	// 	item.documentation == "Tällanen dokumentaatio"
-	// }
+	//if(item.label.indexOf(".") !== -1) {
+	//	let labelArray = item.label.split(".");
+	//	item.insertText = labelArray[labelArray.length - 1];
+	//}
 	return item;
 });
 

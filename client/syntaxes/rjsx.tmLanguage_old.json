@@ -1,0 +1,40 @@
+{
+	"information_for_contributors": [
+		"This file has been converted from https://github.com/atom/language-php/blob/master/grammars/php.cson",
+		"If you want to provide a fix or improvement, please create a pull request against the original repository.",
+		"Once accepted there, we are happy to receive an update request."
+	],
+	"version": "https://github.com/atom/language-php/commit/b054176835218c446d22b3c1b9dcfdcf8cacf49f",
+	"type": "dark",
+    "tokenColors": "./rjsx.tmTheme",
+	"scopeName": "source.rjsx",
+    "patterns": [
+		{
+			"name":"entity.name.class.rjsx",
+			"begin": "rclass",
+			"end": "}",
+			"patterns": [
+				{
+					"name": "keyword.other.special-method",
+					"match": "extends"
+				}
+			]
+		},
+        {
+            "match": "@style",
+            "name": "variable.parameter.rjsx"
+		},
+		{
+			"match": "@class",
+			"name": "variable.parameter.rjsx"
+		},
+		{
+			"match": "@item",
+			"name": "constant.language.rjsx"
+		},
+		{
+			"match": "style",
+			"name": "support.class.builtin"
+		}
+	]
+}

@@ -1,74 +1,74 @@
 {
-	"name": "vscode-rjsx",
-	"description": "VSCode part of RJSX language server",
-	"author": "Robo.ceo",
-	"license": "MIT",
-	"version": "0.0.1",
-	"publisher": "vscode",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/villematti/vscode-rjsx"
-	},
-	"engines": {
-		"vscode": "^1.16.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [
-		"onLanguage:rjsx"
-	],
-	"main": "./out/src/extension",
-	"contributes": {
-		"configuration": {
-			"type": "object",
-			"title": "Server configuration configuration",
-			"properties": {
-				"rjsxLanguageServer.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
-				"rjsxLanguageServer.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VSCode and the language server."
-				}
-			}
-		},
-		"languages": [
+    "name": "vscode-rjsx-client",
+    "description": "VSCode part of RJSX language server",
+    "author": "Robo.ceo",
+    "license": "MIT",
+    "version": "0.0.25",
+    "publisher": "villematti",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/villematti/vscode-rjsx"
+    },
+    "engines": {
+        "vscode": "^1.16.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:rjsx"
+    ],
+    "main": "./out/src/extension",
+    "contributes": {
+        "configuration": {
+            "type": "object",
+            "title": "Server configuration configuration",
+            "properties": {
+                "rjsxLanguageServer.maxNumberOfProblems": {
+                    "scope": "resource",
+                    "type": "number",
+                    "default": 100,
+                    "description": "Controls the maximum number of problems produced by the server."
+                },
+                "rjsxLanguageServer.trace.server": {
+                    "scope": "window",
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Traces the communication between VSCode and the language server."
+                }
+            }
+        },
+        "languages": [
             {
                 "id": "rjsx",
                 "extensions": [
                     "rjsx"
-				],
-				"configuration": "./language-configuration.json"
+                ],
+                "configuration": "./language-configuration.json"
             }
-		],
-		"grammars": [
-			{
-				"language": "rjsx",
-				"scopeName": "text.rjsx",
-				"path": "./syntaxes/rjsx.tmLanguage"
-			}
-		]
-	},
-	"scripts": {
-		"vscode:prepublish": "tsc -p ./",
-		"compile": "tsc -p ./",
-		"watch": "tsc -w -p ./",
-		"update-vscode": "node ./node_modules/vscode/bin/install",
-		"postinstall": "node ./node_modules/vscode/bin/install"
-	},
-	"dependencies": {
-		"vscode": "^1.1.5",
-		"vscode-languageclient": "^3.5.0"
-	}
+        ],
+        "grammars": [
+            {
+                "language": "rjsx",
+                "scopeName": "source.rjsx",
+                "path": "./syntaxes/rjsx.tmLanguage.json"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "tsc -p ./",
+        "compile": "tsc -p ./",
+        "watch": "tsc -w -p ./",
+        "update-vscode": "node ./node_modules/vscode/bin/install",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "dependencies": {
+        "vscode": "^1.1.5",
+        "vscode-languageclient": "^3.5.0"
+    }
 }
