@@ -7,9 +7,10 @@
 import * as request  from 'request';
 
 import {
-	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument, Definition,
+	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument, Definition, Location, Range, Position,
 	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem, Hover
 } from 'vscode-languageserver';
+import { start } from 'repl';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -40,7 +41,7 @@ connection.onInitialize((_params): InitializeResult => {
 			},
 			hoverProvider: true,
 			documentFormattingProvider: true,
-			// definitionProvider: true
+			definitionProvider: true
 		}
 	}
 });
@@ -144,11 +145,47 @@ function rjsxValidate(_textDocument: TextDocument): void {
 	})
 }
 
-// connection.onDefinition((_location): Definition => {
-// 	let definition: Definition;
+connection.onDefinition((_location): Definition => {
+	let definition: Definition;
 
-// 	return definition;
-// })
+	// Compile the ContentObject
+	let content: ContentObject = {
+		content: documents.get(_location.textDocument.uri).getText(),
+		line: _location.position.line,
+		char: _location.position.character
+	}
+
+	// Check what word we are hovering over
+	let validateContent = checkWhatWord(content).toLocaleLowerCase()
+
+	// Map through onComplete items and check if hovered value maches anything
+	serverCompleteItems.map((item) => {
+
+		if(item.label.toLocaleLowerCase() === validateContent) {
+			
+			if(item.data !== undefined) {
+				let range: Range;
+				let location: Location;
+				let startPosition: Position;
+				let endPosition: Position;
+				if(item.data.uri) {
+
+					if(item.data.range) {
+						startPosition = Position.create(item.data.range.startPosition.line, item.data.range.startPosition.char);
+						endPosition = Position.create(item.data.range.endPosition.line, item.data.range.endPosition.char);
+
+						range = Range.create(startPosition, endPosition);
+						location = Location.create(item.data.uri, range);
+	
+						definition = location;
+					}
+				}
+			}
+		}
+	})
+
+	return definition;
+})
 
 // The settings interface describe the server relevant settings part
 interface Settings {
@@ -159,6 +196,13 @@ interface Settings {
 // file
 interface RJSXSettings {
 	maxNumberOfProblems: number;
+}
+
+// When finding out a spesific work from line, this is interface is needed
+interface ContentObject {
+	content: string,
+	line: number,
+	char: number
 }
 
 // hold the maxNumberOfProblems setting
@@ -177,41 +221,57 @@ connection.onDidChangeWatchedFiles((_change) => {
  * @return hover Object - Hovering object what simply contains the string what will be displayed for the user 
  */
 connection.onHover((_textDocumentPosition: TextDocumentPositionParams, _onCancel): Hover => {
-	let hoveringObject = {
-		content: documents.get(_textDocumentPosition.textDocument.uri).getText(),
-		uri: _textDocumentPosition.textDocument.uri,
-		line: _textDocumentPosition.position.line,
-		character: _textDocumentPosition.position.character
-	}
 
 	// Initialize hover object what will be returned
 	let hover = {
 		contents: ""
 	}
 
+	// Compile the ContentObject
+	let content: ContentObject = {
+		content: documents.get(_textDocumentPosition.textDocument.uri).getText(),
+		line: _textDocumentPosition.position.line,
+		char: _textDocumentPosition.position.character
+	}
+
+	// Check what word we are hovering over
+	let validateContent = checkWhatWord(content).toLocaleLowerCase()
+
+	// Map through onComplete items and check if hovered value maches anything
+	serverCompleteItems.map((item) => {
+
+		if(item.label.toLocaleLowerCase() === validateContent) {
+			hover.contents = item.documentation
+		}
+	})
+
+	return hover;
+})
+
+function checkWhatWord(_contentObj: ContentObject): String {
 	let givenWord: any[] = [];
 
 	// Calculate what word is hovered over
-	hoveringObject.content.split("\n").map((line, lineIndex) => {
-		if(lineIndex === hoveringObject.line) {
+	_contentObj.content.split("\n").map((line, lineIndex) => {
+		if(lineIndex === _contentObj.line) {
 			
 			let wordDone = false;
 			line.split("").map((c, i) => {
 				if(wordDone === false) {
 					if(givenWord.length === 0) {
-						if((c !== "\t" && c !== " ") && i <= hoveringObject.character) {
+						if((c !== "\t" && c !== " ") && i <= _contentObj.char) {
 							givenWord.push(c);
 						}
 					} else {
-						if(i < hoveringObject.character) {
+						if(i < _contentObj.char) {
 							if(c === "\t" || c === " "){
 								givenWord = [];
 							} else {
 								givenWord.push(c);
 							}
-						} else if(c !== " " && i === hoveringObject.character) {
+						} else if(c !== " " && i === _contentObj.char) {
 							givenWord.push(c)
-						} else if(i > hoveringObject.character) {
+						} else if(i > _contentObj.char) {
 							if(c === "\t" || c === " ") {
 								wordDone = true;
 							} else {
@@ -223,16 +283,9 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams, _onCancel
 			})
 		}
 	})
-
-	// Map through onComplete items and check if hovered value maches anything
-	serverCompleteItems.map((item) => {
-		if(item.label.toLocaleLowerCase() === givenWord.join("").toLocaleLowerCase()) {
-			hover.contents = item.documentation
-		}
-	})
-
-	return hover;
-})
+	
+	return givenWord.join("");
+}
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
