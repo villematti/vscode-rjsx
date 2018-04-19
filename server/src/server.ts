@@ -7,10 +7,9 @@
 import * as request  from 'request';
 
 import {
-	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument,
+	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, TextDocument, Definition,
 	Diagnostic, DiagnosticSeverity, InitializeResult, TextDocumentPositionParams, CompletionItem, Hover
 } from 'vscode-languageserver';
-import { RequestHandler } from '_debugger';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -39,7 +38,9 @@ connection.onInitialize((_params): InitializeResult => {
 				resolveProvider: true,
 				triggerCharacters: ['.']
 			},
-			documentFormattingProvider: true
+			hoverProvider: true,
+			documentFormattingProvider: true,
+			// definitionProvider: true
 		}
 	}
 });
@@ -109,7 +110,7 @@ function rjsxValidate(_textDocument: TextDocument): void {
 			if(err) return httpResponse;
 			
 			let messages = JSON.parse(body).errors;
-			messages.map((mes: any, i: number) => {
+			messages.map((mes: any) => {
 				let messageType: DiagnosticSeverity;
 				switch(mes.type) {
 					case "warning":
@@ -143,6 +144,12 @@ function rjsxValidate(_textDocument: TextDocument): void {
 	})
 }
 
+// connection.onDefinition((_location): Definition => {
+// 	let definition: Definition;
+
+// 	return definition;
+// })
+
 // The settings interface describe the server relevant settings part
 interface Settings {
 	rjsxLanguageServer: RJSXSettings;
@@ -162,6 +169,13 @@ connection.onDidChangeWatchedFiles((_change) => {
 	connection.console.log('We received an file change event');
 });
 
+/**
+ * When hovering over a component name, this functionality tries to figure out what component that is.
+ * If mach is found, documentation for that component will be shown.
+ * 
+ * @params _textDocumentPosition VS Code generated TextDocumentationParams what holds information about what we are hovering over
+ * @return hover Object - Hovering object what simply contains the string what will be displayed for the user 
+ */
 connection.onHover((_textDocumentPosition: TextDocumentPositionParams, _onCancel): Hover => {
 	let hoveringObject = {
 		content: documents.get(_textDocumentPosition.textDocument.uri).getText(),
@@ -170,9 +184,52 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams, _onCancel
 		character: _textDocumentPosition.position.character
 	}
 
+	// Initialize hover object what will be returned
 	let hover = {
-		contents: "#Testing\n##Kuinka tämä toimii?\n"
+		contents: ""
 	}
+
+	let givenWord: any[] = [];
+
+	// Calculate what word is hovered over
+	hoveringObject.content.split("\n").map((line, lineIndex) => {
+		if(lineIndex === hoveringObject.line) {
+			
+			let wordDone = false;
+			line.split("").map((c, i) => {
+				if(wordDone === false) {
+					if(givenWord.length === 0) {
+						if((c !== "\t" && c !== " ") && i <= hoveringObject.character) {
+							givenWord.push(c);
+						}
+					} else {
+						if(i < hoveringObject.character) {
+							if(c === "\t" || c === " "){
+								givenWord = [];
+							} else {
+								givenWord.push(c);
+							}
+						} else if(c !== " " && i === hoveringObject.character) {
+							givenWord.push(c)
+						} else if(i > hoveringObject.character) {
+							if(c === "\t" || c === " ") {
+								wordDone = true;
+							} else {
+								givenWord.push(c);
+							}
+						}
+					}
+				}
+			})
+		}
+	})
+
+	// Map through onComplete items and check if hovered value maches anything
+	serverCompleteItems.map((item) => {
+		if(item.label.toLocaleLowerCase() === givenWord.join("").toLocaleLowerCase()) {
+			hover.contents = item.documentation
+		}
+	})
 
 	return hover;
 })
