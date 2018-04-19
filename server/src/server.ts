@@ -128,12 +128,31 @@ function rjsxValidate(_textDocument: TextDocument): void {
 					break;
 				}
 
+				// Init values
+				let range = {
+					start: { line: 0, character: 0}, //line: messages[i].line, character: messages[i].character},
+					end: { line: 0, character: 0},// line: messages[i].line, character: messages[i].character + messages[i].length }
+				}
+
+				// Legacy version
+				if(mes.line !== undefined) {
+					range = {
+						start: { line: mes.line, character: 0},
+						end: { line: mes.line, character: 0},
+					}
+				}
+
+				// From version 0.0.31
+				if(mes.startLine !== undefined && mes.endLine !== undefined && mes.startChar !== undefined && mes.endChar !== undefined) {
+					range = {
+						start: { line: mes.startLine, character: mes.startChar },
+						end: { line: mes.endLine, character: mes.endChar }
+					}
+				}
+
 				diagnostics.push({
 					severity: messageType,
-					range: {
-						start: { line: mes.line, character: 0}, //line: messages[i].line, character: messages[i].character},
-						end: { line: mes.line, character: 0},// line: messages[i].line, character: messages[i].character + messages[i].length }
-					},
+					range: range,
 					message: mes.message, // messages[i].message,
 					source: 'rjsx'
 				});

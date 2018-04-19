@@ -3,7 +3,7 @@
     "description": "VSCode part of RJSX language server",
     "author": "Robo.ceo",
     "license": "MIT",
-    "version": "0.0.29",
+    "version": "0.0.30",
     "publisher": "villematti",
     "repository": {
         "type": "git",

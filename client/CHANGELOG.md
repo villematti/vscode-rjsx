@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.31] 19.4.2018
+### CHANGED
+- Improvement how errors are displayed
+
 ## [0.0.30] 19.4.2018
 ### ADDED
 - Go to Defination support
