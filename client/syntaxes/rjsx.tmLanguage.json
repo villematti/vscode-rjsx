@@ -4516,10 +4516,14 @@
 					"include": "#field-declaration"
 				},
 				{
-					"include": "#type-annotation"
+					"include": "#comment"
 				},
 				{
-					"include": "#prop-initializer"
+					"include": "#type-annotation"
+				},
+
+				{
+					"include_": "#prop-initializer"
 				},
 				{
 					"include": "#variable-initializer"
@@ -4954,13 +4958,28 @@
 					"include": "#style-block"
 				},
 				{
+					"include": "#xsml-decor"
+				},
+
+				{
+					"include":"#xsml-colon-attribute",
+					"include_":"#xsml-attribute"
+				},
+				{
+					"include":"#xsml-function",
+					"include_":"#xsml-attribute"
+				},
+				{
+					"include":"#xsml-util-class-name"
+				},
+				{
 					"include":"#xsml-class-name"
 				},
 				{
 					"include": "#xsml-entity-name"
 				},
 				{
-					"include": "#xsml-attribute"
+					"include_": "#xsml-attribute"
 				},
 				{
 					"include":"#string"
@@ -4971,10 +4990,28 @@
 
 			]
 		},
+		"xsml-decor":{
+			"//name":"meta.definition.method.js entity.name.function.js",
+			"//name": "support.constant.color.w3c-standard-color-name.css",
+			"name": "support.class.component.js",
+			"match":" \\@(style|class|id|pass|index|(\\w+)Style)"
+
+
+		},
+		"xsml-util-class-name":{
+			"name":"meta.definition.method.js entity.name.function.js",
+			"//name": "support.constant.color.w3c-standard-color-name.css",
+			"//name": "entity.name.tag.js",
+
+			"match":" (noselect|allowselect|pseudolink|inverted|hoverunderline|monospace|ib|inline|bold|italic|lm5|rm5|lm2|rm2|bm2|bm5|bm10|bm20|bm25|bm50|tm2|tm5|tm10|tm20|tm25|tm50|pointer|bordered|padded|shadow|lowshadow|frontshadow|leftbound|rightbound|waiting|loading|hideoverflow|fullheight|fullabsolute|fullrelative|round|relative|absolute|outlineb|outlinew|pad5|nooverflow|nooverflowy|nooverflowx|pad10|pad20|pad50|blackonwhite|whitefg|blackfg|whiteonblack|nowrap|boxshadow|leftalign|rightalign|centeredtext|normal|automargin|bg|smalltext|largetext|animateall|zerosize|redtext|scroll|scrolly|scrollx|topalign|nomargin|nobreak|cutoverflow|tall|straightedge|fancybg|aluminiumbg|nicefont|sansserif|topleft|topright|bottomleft|bottomright|linklike|underline|overline|strikeout|strikethrough|blink|redhover|redhovertint|whitehovertint|blackhovertint|darkbluehovertint|greenhovertint|bluehovertint|grayhover|grayhoverdark|hoveropacity30|hoveropacity70|hoveropacity85|paper|tutorialhilight|hoveropaque|commentquote|opacityrotate|desc|acronym|shake|autoheight|blink|lfont|xlfont|xxlfont|xxxlfont|xxxxlfont|sfont|xsfont|xsfont|xxxsfont|xxxxsfont|helvetica|simplecard|flextop)"
+
+
+		},
 		"xsml-class-name":{
+			"//name":"meta.definition.method.js entity.name.function.js",
 			"name": "support.constant.color.w3c-standard-color-name.css",
 			"//name": "entity.name.tag.js",
-			"match":" \\@?\\w+( |$)"
+			"match":" \\w+"
 
 
 		},
@@ -5003,13 +5040,14 @@
 			]
 		},
 		"xsml-colon-attribute":{
-			"name": "meta.tag.js",
+			"name": "meta.definition.method.js entity.name.function.js",
 			"begin": "\\s* \\w+\\:",
 			"todo":"make sure not a multiline string or object or..",
 			"beginCaptures":{
-				"1": {
+				"0": {
 					"-name": "entity.other.attribute-name.js",
-					"name":"support.type.property-name.css"
+					"-name":"support.type.property-name.css",
+					"name":"meta.definition.method.js entity.name.function.js"
 				}
 			},
 			"end": "\n",
@@ -5032,13 +5070,13 @@
 			]
 		},
 		"xsml-function":{
-			"name": "meta.tag.js",
+			"name": "meta.definition.method.js entity.name.function.js",
 			"begin": "\\s* \\w+\\->",
 			"todo":"make sure not a multiline string or object or..",
 			"beginCaptures":{
-				"1": {
+				"0": {
 					"-name": "entity.other.attribute-name.js",
-					"name":"support.type.property-name.css"
+					"name":"meta.definition.method.js entity.name.function.js"
 				}
 			},
 			"end": "\n",
