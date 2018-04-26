@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.34] 26.4.2018
+### FIXED
+- Now supporting error reporting on js-components outside frontendcommons
+
 ## [0.0.33] 26.4.2018
 ### FIXED
 - Typo on error checking url

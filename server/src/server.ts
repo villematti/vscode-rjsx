@@ -97,7 +97,15 @@ function rjsxValidate(_textDocument: TextDocument): void {
 	let urlToParse = "";
 
 	if(fileArray.indexOf("frontendcommons") === -1) {
-		urlToParse += "../" + moduleName + "/js/" + fileArray[fileArray.length - 1];
+
+		// If there is a js-component outside frontendcommons, make sure it gets properly included
+		if(fileUri.indexOf(".js-components") !== -1) {
+			let componentArray = fileUri.split(".js-components");
+			let componentArrayModule = componentArray[0].split("/");
+			urlToParse += "../" + moduleName + "/js/" + componentArrayModule[componentArrayModule.length - 1] + ".js-components/" + fileArray[fileArray.length - 1]
+		} else {
+			urlToParse += "../" + moduleName + "/js/" + fileArray[fileArray.length - 1];
+		}
 	} else {
 		let componentUri = fileUri.split("frontendcommons");
 		urlToParse += "../frontendcommons" + componentUri[1];
