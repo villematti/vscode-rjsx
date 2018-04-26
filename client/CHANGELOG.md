@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.33] 26.4.2018
+### FIXED
+- Typo on error checking url
+
 ## [0.0.32] 26.4.2018
 ### FIXED
 - Syntax highlighting bug

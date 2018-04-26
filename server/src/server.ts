@@ -93,14 +93,14 @@ function rjsxValidate(_textDocument: TextDocument): void {
 	let fileArray = fileUri.split("/");
 
 	let moduleName = fileArray[fileArray.indexOf("js") - 1];
-
+	
 	let urlToParse = "";
 
 	if(fileArray.indexOf("frontendcommons") === -1) {
 		urlToParse += "../" + moduleName + "/js/" + fileArray[fileArray.length - 1];
 	} else {
 		let componentUri = fileUri.split("frontendcommons");
-		urlToParse += "../frontendcommons/" + componentUri[1];
+		urlToParse += "../frontendcommons" + componentUri[1];
 	}
 
 	// console.log("Parsed thing: ", urlToParse);
