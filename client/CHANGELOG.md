@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.35] 8.5.2018
+### ADDED
+- Support of endLine and endCharacter values. Helps on determining what's wrong with the code.
+
 ## [0.0.34] 26.4.2018
 ### FIXED
 - Now supporting error reporting on js-components outside frontendcommons
