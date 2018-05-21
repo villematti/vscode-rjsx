@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.36] 21.5.2018
+### FIXED
+- Syntax highlighting bug
+
 ## [0.0.35] 8.5.2018
 ### ADDED
 - Support of endLine and endCharacter values. Helps on determining what's wrong with the code.
