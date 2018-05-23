@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.37] 24.5.2018
+### FIXED
+- Typo on filenames what prevented syntax highlighting
+
 ## [0.0.36] 21.5.2018
 ### FIXED
 - Syntax highlighting bug
